@@ -10,8 +10,8 @@ Mainly a path to learning Haskell.
 
 Start an interactive haskell environment such as ghci,
 type
-	:l life.hs
+    :l life.hs
 then start the program with
-	handlelife
+    handlelife
 (Ctrl-C to stop)
 
