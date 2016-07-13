@@ -1,5 +1,8 @@
 module IOUtils where
 
+import System.IO
+import Data.Char
+
 -- put cursor position on screen
 goto :: (Int,Int) -> IO ()
 goto (x,y) = sputStr ("\ESC[" ++ show y ++ ";" ++ show x ++ "H")
@@ -65,3 +68,13 @@ stickintolist n x xs = take n (x:xs)
 
 reverseindex :: Eq a => a -> [a] -> Int
 reverseindex x xs = head [j | (i,j) <- zip (xs) [1.. length xs] , i==x]
+
+-- some workaround to get characters with no echo back - does not work properly with Hugs
+getCh :: IO Char
+getCh = do  oldBufferMode <- hGetBuffering stdin
+            hSetBuffering stdin NoBuffering
+            hSetEcho stdin False
+            c <- getChar
+            hSetEcho stdin True
+            hSetBuffering stdin oldBufferMode
+            return c
