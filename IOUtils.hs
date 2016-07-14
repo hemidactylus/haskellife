@@ -116,10 +116,7 @@ canstillbesequence = \ ls ss -> length [(1, c) | (is,c) <- ss, (take (length ls)
 getcharseq :: [Char] -> [CharSeq] -> IO GenChar
 getcharseq cs ss = do   c <- getCh
                         if elem (charsToInts (cs++[c])) [is | (is,c) <- ss] then
-                            do  putStrLn ("FFF" ++ (show (length ss)))
-                                putStrLn ("FFF" ++ (show (length (cs ++ [c]))))
-                                return  ( maptospecialchar (cs ++ [c]) ss )
-                            --return ( head [ (is,c) | (is,c) <- ss, is==(charsToInts (cs++[c]))] )
+                            return  ( maptospecialchar (cs ++ [c]) ss )
                         else
                             -- check if partial seqs are still possible
                             if canstillbesequence (cs ++ [c]) ss then

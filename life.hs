@@ -154,8 +154,8 @@ editmenu [] = ""
 editmenu ((c,s,i):xs) = "  '" ++ [c] ++ "' ==> " ++ s ++ "\n" ++ editmenu xs
 
 beditors :: [(Char, String, IO Board)]
-beditors =  [ ('c', "caterer", return (bshift (5,2) caterer)),
-              ('g', "glider" , return glider),
+beditors =  [ ('c', "caterer (demo)", return (bshift (5,2) caterer)),
+              ('g', "glider  (demo)" , return glider),
               ('e', "editor",  ieditor),
               ('q', "<quit>",  do cls
                                   return emptyboard)]
@@ -171,13 +171,18 @@ editmessage = "Editor (h=help)"
              
 -- this IS TO FIX
 lieditor :: Board -> Board -> Pos -> IO Board
-lieditor p b (x,y) = do showcells ([p], b, 0, -1 )
-                        writeat (x+1,y+1) (colorizeText 6 3 "*")
-                        c <- getChar
+lieditor p b (x,y) = do showcells ([emptyboard], b, 0, -1)
+                        showcells ([fullboard], b, 0, -1)
+                        -- in place of the two above: showcells ([p], b, 0, -1 )
+                        writeat (x+1,y+1) (colorizeText 4 6 "*")
+                        c <- getGenChar
                         case c of
-                           'x' -> return b
-                           'z' -> lieditor b (togglepos (wrap (x+1,y)) b) (wrap (x+1,y))
-                           ' ' -> lieditor b (togglepos (x,y) b) (x,y)
+                           (0,'x') -> return b
+                           (1,'r') -> lieditor b b (wrap (x+1,y))
+                           (1,'l') -> lieditor b b (wrap (x-1,y))
+                           (1,'u') -> lieditor b b (wrap (x,y-1))
+                           (1,'d') -> lieditor b b (wrap (x,y+1))
+                           (0,' ') -> lieditor b (togglepos (x,y) b) (x,y)
                            otherwise -> return b
 
 togglepos :: Pos -> Board -> Board
