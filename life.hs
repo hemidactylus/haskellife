@@ -52,6 +52,12 @@ livingcell = colorizeText 2 3 "*"
 emptycell :: String
 emptycell = colorizeText 0 5 " "
 
+livingcellcursor :: String
+livingcellcursor = colorizeText 3 6 "*"
+
+emptycellcursor :: String
+emptycellcursor = colorizeText 3 6 " "
+
 bordersign :: String
 bordersign = colorizeText 4 1 "+"
 
@@ -157,55 +163,91 @@ editmenu ((c,s,i):xs) = "  '" ++ [c] ++ "' ==> " ++ s ++ "\n" ++ editmenu xs
 beditors :: [(Char, String, IO Board)]
 beditors =  [ ('c', "caterer (demo)", return (bshift (5,2) caterer)),
               ('g', "glider  (demo)" , return glider),
-              ('e', "editor",  ieditor),
-              ('q', "<quit>",  do cls
-                                  return emptyboard)]
+              ('e', "edit board",  ieditor),
+              ('q', "quit",  do cls
+                                return emptyboard)]
 
 -- interactive editor is a looping construct starting from the empty board
 ieditor :: IO Board
 ieditor = do drawborders
-             b <- lieditor fullboard emptyboard [(1,1),(1,1)]
+             b <- lieditor fullboard emptyboard [(1,1),(height,width)]
              return b
 
 editmessage :: String
 editmessage = "Editor (h=help)"
-             
--- this IS TO FIX
+
+edithelpmessage :: String
+edithelpmessage = "q      = quit editor\narrows = move cursor\nspace  = toggle cell\nc      = clear board\nr      = refresh screen\n<Press any key>"
+
+showeditorhelp :: IO ()
+showeditorhelp   =  do  putStrLn edithelpmessage
+                        getCh
+                        return ()
+
 lieditor :: Board -> Board -> [Pos] -> IO Board
 lieditor p b ps = do    showcells ([p], b, 0, -1, ps)
                         c <- getGenChar
                         case c of
-                           (0,'x') -> return b
-                           (1,'r') -> lieditor b b (stickintolist 2 (wrap (x+1,y)) ps)
-                           (1,'l') -> lieditor b b (stickintolist 2 (wrap (x-1,y)) ps)
-                           (1,'u') -> lieditor b b (stickintolist 2 (wrap (x,y-1)) ps)
-                           (1,'d') -> lieditor b b (stickintolist 2 (wrap (x,y+1)) ps)
-                           (0,' ') -> lieditor b (togglepos (x,y) b) ps
-                           otherwise -> return b
+                            (0,'q') -> return b
+                            (1,'r') -> lieditor b b (stickintolist 2 (wrap (x+1,y)) ps)
+                            (1,'l') -> lieditor b b (stickintolist 2 (wrap (x-1,y)) ps)
+                            (1,'u') -> lieditor b b (stickintolist 2 (wrap (x,y-1)) ps)
+                            (1,'d') -> lieditor b b (stickintolist 2 (wrap (x,y+1)) ps)
+                            (0,' ') -> lieditor b (togglepos (x,y) b) ps
+                            (0,'c') -> lieditor b emptyboard ps
+                            (0,'r') -> do   showcells ([emptyboard], b, 0, -1, ps)
+                                            showcells ([fullboard], b, 0, -1, ps)
+                                            lieditor p b ps
+                            (0,'h') -> do   showeditorhelp
+                                            cls
+                                            drawborders
+                                            showcells ([emptyboard], b, 0, -1, ps)
+                                            showcells ([fullboard], b, 0, -1, ps)
+                                            lieditor p b ps
+                            otherwise -> lieditor p b ps
                         where
                             x = pickx (head ps)
                             y = picky (head ps)
 
+toggleitem :: Eq a => a -> [a] -> [a]
+toggleitem x xs =   if elem x xs then
+                        [y | y <- xs, y/=x]
+                    else
+                        x:xs
+
 togglepos :: Pos -> Board -> Board
-togglepos o (p:ps) = if o == p then
-                        togglepos o ps
-                     else
-                        [p] ++ togglepos o ps
-togglepos o []     = [o]
+togglepos =  toggleitem
 
 -- END EDITOR
 
+incrpos :: Pos -> Pos
+incrpos p = ((pickx p)+1,(picky p)+1)
+
 showcells :: Bstate -> IO ()
 -- here handle cursor and its relation with the various cell states
-showcells (bs,q,n,g,ps)  = do   seqn [writeat ((pickx p)+1,(picky p)+1) livingcell | p <- q, not (elem p b)]
-                                seqn [writeat ((pickx p)+1,(picky p)+1) emptycell | p <- b, not (elem p q)]
+showcells (bs,q,n,g,ps)  = do   seqn [writeat (incrpos p) livingcell | p <- q, not (elem p b)]
+                                seqn [writeat (incrpos p) emptycell | p <- b, not (elem p q)]
                                 if g >= 0 then
+                                    -- status string
                                     writeat (4,height+2) (colorizeText 6 3 infomsg)
                                 else do
+                                    -- in any case refresh the previous cursor pos and the current pos
+                                    if elem curpos q then
+                                        writeat (incrpos curpos) livingcellcursor
+                                    else
+                                        writeat (incrpos curpos) emptycellcursor
+
+                                    if elem prevpos q then
+                                        writeat (incrpos prevpos) livingcell
+                                    else
+                                        writeat (incrpos prevpos) emptycell
+                                    -- status string
                                     writeat (4,height+2) (colorizeText 4 5 editmessage) where
                                     
                                         infomsg = (" Gen " ++ (resizemsg 5 (show g)) ++ " : " ++ (resizemsg 5 (show n)) ++ " ")
                                         b = head bs
+                                        curpos = head ps
+                                        prevpos = takeitem 2 ps
 
 drawborders :: IO ()
 drawborders = do seqn [writeat (1,y) bordersign | y <- [1..height+1] ]

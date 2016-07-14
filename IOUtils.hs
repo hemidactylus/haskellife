@@ -63,6 +63,9 @@ colorizeText f b xs = colorText (30+f) (colorText (40+b) xs)
 takelast :: [a] -> a
 takelast xs = head (reverse xs)
 
+takeitem :: Int -> [a] -> a
+takeitem n xs = head [x | (m,x) <- zip [1..(length xs)] xs, m==n]
+
 stickintolist :: Int -> a -> [a] -> [a]
 stickintolist n x xs = take n (x:xs)
 
