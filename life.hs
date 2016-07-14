@@ -177,7 +177,7 @@ editmessage :: String
 editmessage = "Editor (h=help)"
 
 edithelpmessage :: String
-edithelpmessage = "q      = quit editor\narrows = move cursor\nspace  = toggle cell\nc      = clear board\nr      = refresh screen\n<Press any key>"
+edithelpmessage = "\n* EDITOR HELP *\nq      = quit editor\narrows = move cursor\nspace  = toggle cell\nc      = clear board\nr      = refresh screen\n<Press any key>"
 
 showeditorhelp :: IO ()
 showeditorhelp   =  do  putStrLn edithelpmessage
