@@ -8,8 +8,9 @@ type Pos = (Int,Int)
 
 type Board = [Pos]
 
-type Bstate = ([Board],Board, Int, Int)
-    -- previous_list, current, num_of_live_cells, generation
+type Bstate = ([Board],Board, Int, Int, [Pos])
+    -- previous_list, current, num_of_live_cells, generation, pos-list:
+    -- the latter can be empty or contain up to the last two positions of the cursor (editor mode)
 
 -- SETUP AND INITIALISATIONS
 
@@ -113,29 +114,29 @@ nextgen b = survivors b ++ births b
 life :: Board -> IO (Bstate)
 life b = do cls
             drawborders
-            showcells ([fullboard],(cropboard . rmdups) b,0,0)
-            showcells ([emptyboard],(cropboard . rmdups) b,0,0)
-            (bs,q,n,g) <- lifeloop ([emptyboard], (cropboard . rmdups) b, (length b), 0 )
+            showcells ([fullboard],(cropboard . rmdups) b,0,0,[])
+            showcells ([emptyboard],(cropboard . rmdups) b,0,0,[])
+            (bs,q,n,g,ps) <- lifeloop ([emptyboard], (cropboard . rmdups) b, (length b), 0, [] )
             putStrLn ("\n\n\tFinished in " ++ (show g) ++ " generations.")
             putStrLn ("\tLoop of length " ++ (show n) ++ " detected.\n\n")
-            return ([q],q,n,g)
+            return ([q],q,n,g,ps)
 
 lifeloop :: Bstate -> IO (Bstate)
-lifeloop (bs,q,n,g) = if elem q bs then do
-                             showcells (bs,q,n,g)
-                             return (bs,q,reverseindex q bs,g)
-                      else do
-                             showcells (bs,q,n,g)
-                             wait sleeptime
-                             lifeloop (stickintolist historyLength q bs,p,m,h) where
-                                 p = nextgen q
-                                 m = length p
-                                 h = g + 1
+lifeloop (bs,q,n,g,ps) = if elem q bs then do
+                                showcells (bs,q,n,g,ps)
+                                return (bs,q,reverseindex q bs,g,ps)
+                         else do
+                                showcells (bs,q,n,g,ps)
+                                wait sleeptime
+                                lifeloop (stickintolist historyLength q bs,p,m,h,ps) where
+                                    p = nextgen q
+                                    m = length p
+                                    h = g + 1
 
 handlelife :: IO Bstate
 handlelife = do c <- editboard
                 if c == emptyboard then
-                    return ([],[],0,0)
+                    return ([],[],0,0,[])
                 else do
                     d <- life c
                     handlelife
@@ -163,27 +164,27 @@ beditors =  [ ('c', "caterer (demo)", return (bshift (5,2) caterer)),
 -- interactive editor is a looping construct starting from the empty board
 ieditor :: IO Board
 ieditor = do drawborders
-             b <- lieditor fullboard emptyboard (1,1)
+             b <- lieditor fullboard emptyboard [(1,1),(1,1)]
              return b
 
 editmessage :: String
 editmessage = "Editor (h=help)"
              
 -- this IS TO FIX
-lieditor :: Board -> Board -> Pos -> IO Board
-lieditor p b (x,y) = do showcells ([emptyboard], b, 0, -1)
-                        showcells ([fullboard], b, 0, -1)
-                        -- in place of the two above: showcells ([p], b, 0, -1 )
-                        writeat (x+1,y+1) (colorizeText 4 6 "*")
+lieditor :: Board -> Board -> [Pos] -> IO Board
+lieditor p b ps = do    showcells ([p], b, 0, -1, ps)
                         c <- getGenChar
                         case c of
                            (0,'x') -> return b
-                           (1,'r') -> lieditor b b (wrap (x+1,y))
-                           (1,'l') -> lieditor b b (wrap (x-1,y))
-                           (1,'u') -> lieditor b b (wrap (x,y-1))
-                           (1,'d') -> lieditor b b (wrap (x,y+1))
-                           (0,' ') -> lieditor b (togglepos (x,y) b) (x,y)
+                           (1,'r') -> lieditor b b (stickintolist 2 (wrap (x+1,y)) ps)
+                           (1,'l') -> lieditor b b (stickintolist 2 (wrap (x-1,y)) ps)
+                           (1,'u') -> lieditor b b (stickintolist 2 (wrap (x,y-1)) ps)
+                           (1,'d') -> lieditor b b (stickintolist 2 (wrap (x,y+1)) ps)
+                           (0,' ') -> lieditor b (togglepos (x,y) b) ps
                            otherwise -> return b
+                        where
+                            x = pickx (head ps)
+                            y = picky (head ps)
 
 togglepos :: Pos -> Board -> Board
 togglepos o (p:ps) = if o == p then
@@ -191,19 +192,20 @@ togglepos o (p:ps) = if o == p then
                      else
                         [p] ++ togglepos o ps
 togglepos o []     = [o]
-                    
+
 -- END EDITOR
-                     
+
 showcells :: Bstate -> IO ()
-showcells (bs,q,n,g)  = do  seqn [writeat ((pickx p)+1,(picky p)+1) livingcell | p <- q, not (elem p b)]
-                            seqn [writeat ((pickx p)+1,(picky p)+1) emptycell | p <- b, not (elem p q)]
-                            if g >= 0 then
-                                writeat (4,height+2) (colorizeText 6 3 infomsg)
-                            else
-                                writeat (4,height+2) (colorizeText 4 5 editmessage) where
+-- here handle cursor and its relation with the various cell states
+showcells (bs,q,n,g,ps)  = do   seqn [writeat ((pickx p)+1,(picky p)+1) livingcell | p <- q, not (elem p b)]
+                                seqn [writeat ((pickx p)+1,(picky p)+1) emptycell | p <- b, not (elem p q)]
+                                if g >= 0 then
+                                    writeat (4,height+2) (colorizeText 6 3 infomsg)
+                                else do
+                                    writeat (4,height+2) (colorizeText 4 5 editmessage) where
                                     
-                                    infomsg = (" Gen " ++ (resizemsg 5 (show g)) ++ " : " ++ (resizemsg 5 (show n)) ++ " ")
-                                    b = head bs
+                                        infomsg = (" Gen " ++ (resizemsg 5 (show g)) ++ " : " ++ (resizemsg 5 (show n)) ++ " ")
+                                        b = head bs
 
 drawborders :: IO ()
 drawborders = do seqn [writeat (1,y) bordersign | y <- [1..height+1] ]
