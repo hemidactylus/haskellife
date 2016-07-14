@@ -78,3 +78,51 @@ getCh = do  oldBufferMode <- hGetBuffering stdin
             hSetEcho stdin True
             hSetBuffering stdin oldBufferMode
             return c
+
+-- capturing control characters such as arrows:
+-- two testing functions to see the control sequences
+sgetchars :: IO [Char]
+sgetchars = getchars []
+
+getchars :: [Char] -> IO [Char]
+getchars cs = do    c <- getCh
+                    putStrLn ("#" ++ (foldr  (\ a1 a2 -> a1 ++ " " ++ a2) "" (map (show . ord) (cs ++ [c]))) ++ "#")
+                    getchars (cs ++ [c])
+
+-- a type carrying control-char info
+type GenChar = (Int, Char)
+    -- i.e. 0/1 (normal/control) + a char
+-- a type carrying control sequences
+type CharSeq = ([Int],Char)
+-- an array of ascii codes + a desired representation char
+
+getGenChar :: IO GenChar
+getGenChar = getcharseq [] seqMap
+
+charsToInts :: [Char] -> [Int]
+charsToInts = map ord
+
+seqMap :: [CharSeq]
+seqMap = [([27,91,65],'u'), ([27,91,66],'d'), ([27,91,67],'r'), ([27,91,68],'l')]
+-- i.e. up/down/right/left arrows
+
+maptospecialchar :: [Char] -> [CharSeq] -> GenChar
+maptospecialchar = \ ls ss -> head [ (1,c) | (is,c) <- ss, is==( charsToInts ls ) ]
+
+canstillbesequence :: [Char] -> [CharSeq] -> Bool
+canstillbesequence = \ ls ss -> length [(1, c) | (is,c) <- ss, (take (length ls) is) == (charsToInts ls) ] > 0
+
+-- this holds the focus until it either has a sequence not fitting for sure into seqMap or one exactly from it
+getcharseq :: [Char] -> [CharSeq] -> IO GenChar
+getcharseq cs ss = do   c <- getCh
+                        if elem (charsToInts (cs++[c])) [is | (is,c) <- ss] then
+                            do  putStrLn ("FFF" ++ (show (length ss)))
+                                putStrLn ("FFF" ++ (show (length (cs ++ [c]))))
+                                return  ( maptospecialchar (cs ++ [c]) ss )
+                            --return ( head [ (is,c) | (is,c) <- ss, is==(charsToInts (cs++[c]))] )
+                        else
+                            -- check if partial seqs are still possible
+                            if canstillbesequence (cs ++ [c]) ss then
+                                getcharseq (cs++[c]) ss
+                            else
+                                return (0,c)

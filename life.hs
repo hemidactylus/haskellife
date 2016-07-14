@@ -223,11 +223,3 @@ liven = life . strtopair
 liven "ascsdfaqawre2349icq[-34v346b#%^B$^B#sndhdfn54n6dNYTDNRYDDFGSERTSVTRDDYT$%^BW$B%^ENW$^%$^#$%&B#^&#^&&V#%@V#$%@V#$%@#V$%@V^%*&M*&(<&)*)&_>&)<*<%%*M%N$^B&$@VC!@X%$DERGSTVDNTUFNGUJNTFURTSETBGFHBDTDYRTBGDFYUYDRTFBXHFDY^BTRDXNFJDFKI<MBCV$"
 --}
 
-sgetchars :: IO [Char]
-sgetchars = getchars []
-
-getchars :: [Char] -> IO [Char]
-getchars cs = do    c <- getCh
-                    putStrLn ("#" ++ (foldr  (\ a1 a2 -> a1 ++ " " ++ a2) "" (map (show . ord) (cs ++ [c]))) ++ "#")
-                    getchars (cs ++ [c])
-
