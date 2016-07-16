@@ -177,10 +177,11 @@ editmessage :: String
 editmessage = "Editor (h=help)"
 
 edithelpmessage :: String
-edithelpmessage = "\n* EDITOR HELP *\nq      = quit editor\narrows = move cursor\nspace  = toggle cell\nc      = clear board\nr      = refresh screen\n<Press any key>"
+edithelpmessage = "* EDITOR HELP *\nq      = quit editor\narrows = move cursor\nspace  = toggle cell\nc      = clear board\nr      = refresh screen\n<Press any key>"
 
 showeditorhelp :: IO ()
-showeditorhelp   =  do  putStrLn edithelpmessage
+showeditorhelp   =  do  cls
+                        writeat (1,1) edithelpmessage
                         getCh
                         return ()
 
@@ -242,12 +243,14 @@ showcells (bs,q,n,g,ps)  = do   seqn [writeat (incrpos p) livingcell | p <- q, n
                                     else
                                         writeat (incrpos prevpos) emptycell
                                     -- status string
-                                    writeat (4,height+2) (colorizeText 4 5 editmessage) where
+                                    writeat (4,height+2) (colorizeText 4 5 editfullstatus) where
                                     
                                         infomsg = (" Gen " ++ (resizemsg 5 (show g)) ++ " : " ++ (resizemsg 5 (show n)) ++ " ")
                                         b = head bs
                                         curpos = head ps
                                         prevpos = takeitem 2 ps
+                                        editfullstatus = ( "[" ++ (res2 (pickx curpos)) ++ "," ++ (res2 (picky curpos)) ++ "] " ++ editmessage)
+                                        res2 = \ v -> resizemsg 2 (show v)
 
 drawborders :: IO ()
 drawborders = do seqn [writeat (1,y) bordersign | y <- [1..height+1] ]
