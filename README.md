@@ -19,3 +19,6 @@ then start the program with
 
 (Ctrl-C to stop)
 
+# Current status
+
+Editor to manually alter the board before playing it.
